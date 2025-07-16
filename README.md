@@ -1,6 +1,6 @@
 # Localboard - Network Clipboard
 
-A simple web-based clipboard sharing application that allows multiple users on the same network to share text entries.
+A simple web-based application that allows multiple users on the same network to share text entries.
 
 ## Features
 
