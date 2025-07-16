@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Network Clipboard</title>
+    <!-- Tailwind CSS CDN for responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .main-content {
+            flex: 1 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            min-height: 60vh;
+            padding-bottom: 110px; /* Reserve space for input box */
+        }
+        #clipboardEntries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 800px;
+            align-items: end;
+            justify-items: center;
+            margin-bottom: 1rem;
+        }
+        .input-section-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            background: #f3f4f6;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+            padding: 1rem 0.5rem;
+            display: flex;
+            justify-content: center;
+            z-index: 100;
+        }
+        .clipboard-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 1rem 1.25rem;
+            background-color: transparent;
+            border-radius: 0;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            word-break: break-word;
+            white-space: pre-wrap;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 0;
+            justify-content: flex-end;
+        }
+        .clipboard-item-header {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: flex-end;
+            width: 100%;
+            margin-bottom: 0.25rem;
+            position: relative;
+            min-height: 2.2rem;
+        }
+        .delete-button {
+            opacity: 0;
+            transition: opacity 0.2s;
+            margin-top: 2.5%;
+            margin-left: 0%;
+        }
+        .clipboard-item:hover .delete-button,
+        .clipboard-item:focus-within .delete-button {
+            opacity: 1;
+        }
+        .clipboard-item:hover {
+            background-color: #e2e8f0; /* Slightly darker on hover for feedback */
+            border-color: transparent; /* No border on hover */
+            transform: translateY(0); /* No lift effect */
+        }
+        .clipboard-item-content {
+            flex-grow: 1;
+            color: #374151;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-right: 0;
+            width: 100%;
+            padding-right: 2rem; /* Add padding to prevent text from overlapping delete icon */
+        }
+        .delete-button {
+            position: absolute; /* Positioned absolutely */
+            top: 0.5rem; /* 0.5rem from the top */
+            right: 0.5rem; /* 0.5rem from the right */
+            background-color: transparent; /* No background */
+            color: #ef4444; /* Red icon color */
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.25rem; /* Smaller padding for icon */
+            font-size: 1.2rem; /* Larger icon size */
+            cursor: pointer;
+            transition: color 0.2s ease-in-out; /* Transition for color */
+            flex-shrink: 0;
+            line-height: 1; /* Adjust line height for icon */
+        }
+        .delete-button:hover {
+            color: #dc2626; /* Darker red on hover */
+            background-color: rgba(239, 68, 68, 0.1); /* Light red background on hover */
+        }
+        .separator {
+            border-top: 1px solid #e5e7eb; /* Single line separator */
+            margin: 0; /* No margin for separator, will be directly between items */
+            width: 100%;
+            max-width: 800px;
+        }
+        #clipboardEntries {
+            display: flex;
+            flex-direction: column;
+            gap: 0; /* Removed gap between entries */
+            width: 100%;
+            max-width: 800px;
+        }
+        .message-box {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+            font-size: 0.9rem;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .input-section {
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 1rem; /* Adjusted margin for input section */
+        }
+    </style>
+</head>
+<body>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">Local Network - Clipboard</h1>
+
+    <div class="main-content">
+        <div id="clipboardEntries">
+            <!-- Clipboard entries will be loaded here by JavaScript -->
+            <p class="text-center text-gray-500 p-4" style="grid-column: 1 / -1;">No entries yet. Add something!</p>
+        </div>
+    </div>
+
+    <div class="input-section-bottom flex flex-col sm:flex-row gap-3">
+        <textarea
+            id="clipboardInput"
+            class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[60px] max-w-[700px]"
+            placeholder="Type something to share..."
+            rows="2"
+        ></textarea>
+        <button
+            id="addClipboardBtn"
+            class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
+        >
+            Add
+        </button>
+    </div>
+
+    <div id="messageBox" class="message-box"></div>
+
+    <script>
+        const clipboardInput = document.getElementById('clipboardInput');
+        const addClipboardBtn = document.getElementById('addClipboardBtn');
+        const clipboardEntriesContainer = document.getElementById('clipboardEntries');
+        const messageBox = document.getElementById('messageBox');
+
+        // Base URL for the backend API - dynamically constructed from current host
+        const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:${window.location.port || '5000'}`;
+        console.log('Attempting to connect to API_BASE_URL:', API_BASE_URL); // Added for debugging
+
+        /**
+         * Displays a temporary message box with the given text.
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            messageBox.textContent = message;
+            messageBox.classList.add('show');
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 2000); // Message disappears after 2 seconds
+        }
+
+        /**
+         * Copies text to the user's clipboard.
+         * Uses document.execCommand('copy') for broader compatibility in iframes.
+         * @param {string} text - The text to copy.
+         */
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed'; // Prevent scrolling to bottom
+            textarea.style.left = '-9999px'; // Move off-screen
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showMessageBox('Copied to clipboard!');
+                } else {
+                    showMessageBox('Failed to copy.');
+                }
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                showMessageBox('Failed to copy.');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        /**
+         * Fetches all clipboard entries from the backend API and renders them.
+         */
+        async function fetchClipboardEntries() {
+            try {
+                const url = `${API_BASE_URL}/clipboard`;
+                console.log('Fetching from:', url); // Added for debugging
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                let entries = await response.json();
+                // Ensure oldest at top, newest at bottom
+                renderClipboardEntries(entries);
+            } catch (error) {
+                console.error('Error fetching clipboard entries:', error);
+                // Optionally show an error message to the user
+            }
+        }
+
+        /**
+         * Renders the given clipboard entries into the DOM.
+         * @param {Array<Object>} entries - An array of clipboard entry objects.
+         */
+        function renderClipboardEntries(entries) {
+            clipboardEntriesContainer.innerHTML = ''; // Clear existing entries
+
+            if (entries.length === 0) {
+                clipboardEntriesContainer.innerHTML = '<p class="text-center text-gray-500 p-4">No entries yet. Add something!</p>';
+                return;
+            }
+
+            // Helper function to detect and linkify URLs
+            function linkify(text) {
+                const urlRegex = /((https?:\/\/|www\.)[^\s]+)/g;
+                return text.replace(urlRegex, function(url) {
+                    let href = url;
+                    if (!href.startsWith('http')) {
+                        href = 'http://' + href;
+                    }
+                    return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">${url}</a>`;
+                });
+            }
+
+            // Show newest at bottom, oldest at top, but anchor entries to bottom
+            clipboardEntriesContainer.innerHTML = '';
+            // Reverse entries so newest is at the bottom
+            entries.forEach((entry, idx) => {
+                const index = entries.length - idx - 1; // 0 = oldest, last = newest
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'clipboard-item';
+                itemDiv.setAttribute('data-id', entry.id);
+
+                // Header row: entry number (right), delete button (right)
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'clipboard-item-header';
+
+                // Only the delete button (no entry number)
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-button';
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteBtn.title = 'Delete entry';
+                deleteBtn.onclick = async (event) => {
+                    event.stopPropagation();
+                    const id = itemDiv.getAttribute('data-id');
+                    await deleteClipboardEntry(id);
+                };
+                headerDiv.appendChild(deleteBtn);
+
+                itemDiv.appendChild(headerDiv);
+
+                const contentSpan = document.createElement('span');
+                contentSpan.className = 'clipboard-item-content';
+                contentSpan.innerHTML = linkify(entry.content);
+                contentSpan.title = 'Click to copy';
+                itemDiv.appendChild(contentSpan);
+
+                itemDiv.onclick = (e) => {
+                    if (e.target.tagName !== 'A') {
+                        copyToClipboard(entry.content);
+                    }
+                };
+                itemDiv.addEventListener('dblclick', (e) => {
+                    if (e.target.tagName === 'A') {
+                        e.stopPropagation();
+                    }
+                });
+
+                clipboardEntriesContainer.appendChild(itemDiv);
+
+                // Add separator if it's not the last item
+                if (idx < entries.length - 1) {
+                    const separatorDiv = document.createElement('div');
+                    separatorDiv.className = 'separator';
+                    clipboardEntriesContainer.appendChild(separatorDiv);
+                }
+            });
+        }
+
+        /**
+         * Adds a new clipboard entry to the backend API.
+         */
+        addClipboardBtn.addEventListener('click', async () => {
+            const content = clipboardInput.value.trim();
+            if (content) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/clipboard`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ content: content }),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    clipboardInput.value = ''; // Clear input field
+                    await fetchClipboardEntries(); // Refresh entries
+                    showMessageBox('Entry added!');
+                } catch (error) {
+                    console.error('Error adding clipboard entry:', error);
+                    showMessageBox('Failed to add entry.');
+                }
+            } else {
+                showMessageBox('Please enter some text.');
+            }
+        });
+
+        /**
+         * Deletes a clipboard entry by its ID from the backend API.
+         * @param {string} id - The ID of the entry to delete.
+         */
+        async function deleteClipboardEntry(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/clipboard/${id}`, {
+                    method: 'DELETE',
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                await fetchClipboardEntries(); // Refresh entries after deletion
+                showMessageBox('Entry deleted!');
+            } catch (error) {
+                console.error('Error deleting clipboard entry:', error);
+                showMessageBox('Failed to delete entry.');
+            }
+        }
+
+        // Fetch entries on page load
+        document.addEventListener('DOMContentLoaded', fetchClipboardEntries);
+    </script>
+</body>
+</html>
