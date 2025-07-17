@@ -1,4 +1,4 @@
-# Local Network Clipboard
+# Local Network Copy and Paste
 
 A simple web-based application that allows multiple users on the same network to share text entries.
 
