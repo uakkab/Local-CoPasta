@@ -168,21 +168,20 @@
             <!-- Clipboard entries will be loaded here by JavaScript -->
             <p class="text-center text-gray-500 p-4" style="grid-column: 1 / -1;">No entries yet. Add something!</p>
         </div>
-    </div>
-
-    <div class="input-section-bottom flex flex-col sm:flex-row gap-3">
-        <textarea
-            id="clipboardInput"
-            class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[60px] max-w-[700px]"
-            placeholder="Type something to share..."
-            rows="2"
-        ></textarea>
-        <button
-            id="addClipboardBtn"
-            class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
-        >
-            Add
-        </button>
+        <div class="input-section flex flex-col sm:flex-row gap-3 mt-4">
+            <textarea
+                id="clipboardInput"
+                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[60px] max-w-[700px]"
+                placeholder="Type something to share..."
+                rows="2"
+            ></textarea>
+            <button
+                id="addClipboardBtn"
+                class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
+            >
+                Add
+            </button>
+        </div>
     </div>
 
     <div id="messageBox" class="message-box"></div>
