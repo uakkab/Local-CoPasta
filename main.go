@@ -66,7 +66,7 @@ var sessions = make(map[string]Session)
 // Database initialization
 func initDB() error {
 	var err error
-	db, err = sql.Open("sqlite3", "./pastebin.db")
+	db, err = sql.Open("sqlite", "./pastebin.db")
 	if err != nil {
 		return err
 	}
