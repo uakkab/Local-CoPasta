@@ -559,13 +559,14 @@ func updateSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 4 {
+	if len(parts) < 5 {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
 
-	snippetID, err := strconv.Atoi(parts[3])
+	snippetID, err := strconv.Atoi(parts[4])
 	if err != nil {
+		log.Println("Invalid snippet ID:", parts[4])
 		http.Error(w, "Invalid snippet ID", http.StatusBadRequest)
 		return
 	}
@@ -629,13 +630,14 @@ func deleteSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 4 {
+	if len(parts) < 5 {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
 
-	snippetID, err := strconv.Atoi(parts[3])
+	snippetID, err := strconv.Atoi(parts[4])
 	if err != nil {
+		log.Println("Invalid snippet ID:", parts[4])
 		http.Error(w, "Invalid snippet ID", http.StatusBadRequest)
 		return
 	}
