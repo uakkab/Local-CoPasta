@@ -58,6 +58,9 @@
 
         .snippet-header {
             margin-bottom: 20px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
         }
 
         .snippet-title {
@@ -68,10 +71,11 @@
 
         .snippet-meta {
             display: flex;
-            gap: 15px;
+            flex-direction: column;
+            gap: 8px;
             font-size: 14px;
             color: #666;
-            flex-wrap: wrap;
+            text-align: right;
         }
 
         .snippet-badge {
@@ -98,6 +102,7 @@
             margin-bottom: 20px;
             max-height: 600px;
             overflow-y: auto;
+            text-align: left;
         }
 
         .snippet-actions {
@@ -177,6 +182,7 @@
         .comment-content {
             color: #333;
             line-height: 1.6;
+            text-align: left;
         }
 
         .form-group {
@@ -400,8 +406,17 @@
                 return;
             }
 
+            let deleteUrl = `/api/snippet/delete/${snippetID}`;
+
+            // If not owner, need to provide edit password
+            if (!isOwner) {
+                const editPassword = prompt('Enter your edit password to delete:');
+                if (!editPassword) return;
+                deleteUrl += `?edit_password=${encodeURIComponent(editPassword)}`;
+            }
+
             try {
-                const response = await fetch(`/api/snippet/delete/${snippetID}`, {
+                const response = await fetch(deleteUrl, {
                     method: 'DELETE'
                 });
 
@@ -409,7 +424,7 @@
                     alert('Snippet deleted successfully!');
                     window.location.href = '/';
                 } else {
-                    showAlert('Failed to delete snippet', 'error');
+                    showAlert('Failed to delete snippet - check your password', 'error');
                 }
             } catch (error) {
                 showAlert('Network error', 'error');

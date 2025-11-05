@@ -659,8 +659,15 @@ func deleteSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	session := getSessionUser(r)
 	canDelete := false
 
+	// Check if user owns it
 	if session != nil && userID.Valid && int(userID.Int64) == session.UserID {
 		canDelete = true
+	} else {
+		// Check for edit password in query parameter
+		editPwd := r.URL.Query().Get("edit_password")
+		if editPwd != "" && editPassword.Valid && editPwd == editPassword.String {
+			canDelete = true
+		}
 	}
 
 	if !canDelete {
@@ -911,6 +918,7 @@ func viewSnippetPageHandler(w http.ResponseWriter, r *http.Request) {
 		canDelete = true
 	} else if snippet.EditPassword != "" {
 		canEdit = true // Can edit with password
+		canDelete = true // Can also delete with password
 	}
 
 	data := map[string]interface{}{
