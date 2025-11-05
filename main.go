@@ -82,7 +82,7 @@ func initDB() error {
 
 	CREATE TABLE IF NOT EXISTS snippets (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
+		title TEXT DEFAULT '',
 		content TEXT NOT NULL,
 		user_id INTEGER,
 		edit_password TEXT,
@@ -98,7 +98,7 @@ func initDB() error {
 	CREATE TABLE IF NOT EXISTS comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		snippet_id INTEGER NOT NULL,
-		username TEXT NOT NULL,
+		username TEXT DEFAULT 'Anonymous',
 		content TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE
@@ -276,7 +276,6 @@ func createSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Title            string `json:"title"`
 		Content          string `json:"content"`
 		VisibilityType   string `json:"visibility_type"`
 		ViewPassword     string `json:"view_password,omitempty"`
@@ -288,8 +287,8 @@ func createSnippetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Title == "" || req.Content == "" {
-		http.Error(w, "Title and content are required", http.StatusBadRequest)
+	if req.Content == "" {
+		http.Error(w, "Content is required", http.StatusBadRequest)
 		return
 	}
 
@@ -327,9 +326,9 @@ func createSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := db.Exec(`
-		INSERT INTO snippets (title, content, user_id, edit_password, visibility_type, view_password, unique_link, comments_enabled)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.Title, req.Content, userID, editPassword, req.VisibilityType, viewPasswordHash, uniqueLink, req.CommentsEnabled)
+		INSERT INTO snippets (content, user_id, edit_password, visibility_type, view_password, unique_link, comments_enabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		req.Content, userID, editPassword, req.VisibilityType, viewPasswordHash, uniqueLink, req.CommentsEnabled)
 
 	if err != nil {
 		log.Println("Error creating snippet:", err)
@@ -572,13 +571,17 @@ func updateSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Title        string `json:"title"`
 		Content      string `json:"content"`
 		EditPassword string `json:"edit_password,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Content == "" {
+		http.Error(w, "Content is required", http.StatusBadRequest)
 		return
 	}
 
@@ -611,9 +614,9 @@ func updateSnippetHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = db.Exec(`
 		UPDATE snippets
-		SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+		SET content = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, req.Title, req.Content, snippetID)
+	`, req.Content, snippetID)
 
 	if err != nil {
 		http.Error(w, "Failed to update snippet", http.StatusInternalServerError)
@@ -682,7 +685,6 @@ func createCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		SnippetID int    `json:"snippet_id"`
-		Username  string `json:"username"`
 		Content   string `json:"content"`
 	}
 
@@ -706,14 +708,10 @@ func createCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Username == "" {
-		req.Username = "Anonymous"
-	}
-
 	_, err = db.Exec(`
-		INSERT INTO comments (snippet_id, username, content)
-		VALUES (?, ?, ?)
-	`, req.SnippetID, req.Username, req.Content)
+		INSERT INTO comments (snippet_id, content)
+		VALUES (?, ?)
+	`, req.SnippetID, req.Content)
 
 	if err != nil {
 		http.Error(w, "Failed to create comment", http.StatusInternalServerError)

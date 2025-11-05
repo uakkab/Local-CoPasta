@@ -258,7 +258,6 @@
             <div id="alertContainer"></div>
 
             <div class="snippet-header">
-                <h1 class="snippet-title" id="snippetTitle">{{.Snippet.Title}}</h1>
                 <div class="snippet-meta">
                     <span class="snippet-badge badge-{{.Snippet.VisibilityType}}">{{.Snippet.VisibilityType}}</span>
                     <span>By: <strong>{{.Snippet.Username}}</strong></span>
@@ -287,12 +286,8 @@
                 </div>
                 {{end}}
                 <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="editTitle" value="{{.Snippet.Title}}">
-                </div>
-                <div class="form-group">
                     <label>Content</label>
-                    <textarea id="editContent">{{.Snippet.Content}}</textarea>
+                    <textarea id="editContent" style="min-height: 200px;">{{.Snippet.Content}}</textarea>
                 </div>
                 <button class="btn" onclick="saveEdit()">💾 Save Changes</button>
                 <button class="btn btn-secondary" onclick="toggleEditForm()">Cancel</button>
@@ -329,12 +324,8 @@
                     <h4 style="margin-bottom: 15px;">Add a Comment</h4>
                     <form onsubmit="addComment(event)">
                         <div class="form-group">
-                            <label>Name (optional)</label>
-                            <input type="text" id="commentUsername" placeholder="Anonymous">
-                        </div>
-                        <div class="form-group">
                             <label>Comment</label>
-                            <textarea id="commentContent" required></textarea>
+                            <textarea id="commentContent" required style="min-height: 100px;"></textarea>
                         </div>
                         <button type="submit" class="btn">💬 Post Comment</button>
                     </form>
@@ -370,12 +361,11 @@
         }
 
         async function saveEdit() {
-            const title = document.getElementById('editTitle').value;
             const content = document.getElementById('editContent').value;
             const editPassword = document.getElementById('editPassword')?.value || '';
 
-            if (!title || !content) {
-                showAlert('Title and content are required', 'error');
+            if (!content) {
+                showAlert('Content is required', 'error');
                 return;
             }
 
@@ -383,18 +373,20 @@
                 const response = await fetch(`/api/snippet/update/${snippetID}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content, edit_password: editPassword })
+                    body: JSON.stringify({ content, edit_password: editPassword })
                 });
 
                 if (response.ok) {
                     showAlert('Snippet updated successfully!', 'success');
-                    document.getElementById('snippetTitle').textContent = title;
                     document.getElementById('snippetContent').textContent = content;
                     toggleEditForm();
 
                     // Update the date
                     const now = new Date().toISOString();
-                    document.getElementById('updatedDate').textContent = now;
+                    const updatedDate = document.getElementById('updatedDate');
+                    if (updatedDate) {
+                        updatedDate.textContent = now;
+                    }
                 } else {
                     const data = await response.json();
                     showAlert(data.error || 'Failed to update snippet', 'error');
@@ -428,7 +420,6 @@
         async function addComment(event) {
             event.preventDefault();
 
-            const username = document.getElementById('commentUsername').value || 'Anonymous';
             const content = document.getElementById('commentContent').value;
 
             if (!content) {
@@ -440,7 +431,7 @@
                 const response = await fetch('/api/comments/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ snippet_id: snippetID, username, content })
+                    body: JSON.stringify({ snippet_id: snippetID, content })
                 });
 
                 if (response.ok) {
