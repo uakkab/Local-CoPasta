@@ -417,6 +417,10 @@ func getSnippetHandler(w http.ResponseWriter, r *http.Request) {
 
 	var snippet Snippet
 	var username sql.NullString
+	var editPassword sql.NullString
+	var viewPassword sql.NullString
+	var uniqueLink sql.NullString
+	var userID sql.NullInt64
 	var query string
 	var args []interface{}
 
@@ -443,20 +447,39 @@ func getSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := db.QueryRow(query, args...).Scan(
-		&snippet.ID, &snippet.Title, &snippet.Content, &snippet.UserID, &snippet.EditPassword,
-		&snippet.VisibilityType, &snippet.ViewPassword, &snippet.UniqueLink, &snippet.CommentsEnabled,
+		&snippet.ID, &snippet.Title, &snippet.Content, &userID, &editPassword,
+		&snippet.VisibilityType, &viewPassword, &uniqueLink, &snippet.CommentsEnabled,
 		&snippet.CreatedAt, &snippet.UpdatedAt, &username,
 	)
 
 	if err != nil {
+		log.Println("Error fetching snippet:", err)
 		http.Error(w, "Snippet not found", http.StatusNotFound)
 		return
 	}
 
+	// Convert nullable fields
 	if username.Valid {
 		snippet.Username = username.String
 	} else {
 		snippet.Username = "Anonymous"
+	}
+
+	if userID.Valid {
+		uid := int(userID.Int64)
+		snippet.UserID = &uid
+	}
+
+	if editPassword.Valid {
+		snippet.EditPassword = editPassword.String
+	}
+
+	if viewPassword.Valid {
+		snippet.ViewPassword = viewPassword.String
+	}
+
+	if uniqueLink.Valid {
+		snippet.UniqueLink = uniqueLink.String
 	}
 
 	session := getSessionUser(r)
@@ -559,9 +582,10 @@ func updateSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check ownership
-	var snippet Snippet
+	var userID sql.NullInt64
+	var editPassword sql.NullString
 	err = db.QueryRow("SELECT user_id, edit_password FROM snippets WHERE id = ?", snippetID).
-		Scan(&snippet.UserID, &snippet.EditPassword)
+		Scan(&userID, &editPassword)
 
 	if err != nil {
 		http.Error(w, "Snippet not found", http.StatusNotFound)
@@ -571,9 +595,11 @@ func updateSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	session := getSessionUser(r)
 	canEdit := false
 
-	if session != nil && snippet.UserID != nil && *snippet.UserID == session.UserID {
+	// Check if user owns it
+	if session != nil && userID.Valid && int(userID.Int64) == session.UserID {
 		canEdit = true
-	} else if snippet.EditPassword != "" && req.EditPassword == snippet.EditPassword {
+	} else if editPassword.Valid && req.EditPassword == editPassword.String {
+		// Check anonymous edit password
 		canEdit = true
 	}
 
@@ -615,9 +641,10 @@ func deleteSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check ownership
-	var snippet Snippet
+	var userID sql.NullInt64
+	var editPassword sql.NullString
 	err = db.QueryRow("SELECT user_id, edit_password FROM snippets WHERE id = ?", snippetID).
-		Scan(&snippet.UserID, &snippet.EditPassword)
+		Scan(&userID, &editPassword)
 
 	if err != nil {
 		http.Error(w, "Snippet not found", http.StatusNotFound)
@@ -627,7 +654,7 @@ func deleteSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	session := getSessionUser(r)
 	canDelete := false
 
-	if session != nil && snippet.UserID != nil && *snippet.UserID == session.UserID {
+	if session != nil && userID.Valid && int(userID.Int64) == session.UserID {
 		canDelete = true
 	}
 
