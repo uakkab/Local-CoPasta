@@ -31,25 +31,49 @@ Choose how your snippets are shared:
 ### 🚀 **Technical Highlights**
 - **Single Binary**: Compile to one executable (~15MB)
 - **Zero Configuration**: Works out of the box
-- **Minimal Dependencies**: Only 1 external Go package (SQLite driver)
+- **Minimal Dependencies**: Pure Go SQLite driver (no CGO required!)
 - **Embedded Templates**: HTML/CSS/JS built into the binary
 - **SQLite Database**: Single-file database, no setup required
 - **Portable**: Copy and run anywhere - Windows, Linux, macOS
+- **No C Compiler Needed**: Uses modernc.org/sqlite (pure Go implementation)
 
 ## Installation
 
 ### Prerequisites
-- Go 1.16 or higher (for building from source)
-- GCC (for CGO SQLite support)
+- **Go 1.23 or higher** (for building from source)
+- **No C compiler required!** (CGO-free build)
 
-### Build from Source
+### Quick Build
 
+#### Windows (PowerShell or CMD)
+```powershell
+# Clone the repository
+git clone <repository-url>
+cd Local-CoPasta
+
+# Run the build script
+.\build-windows.bat
+
+# Or build manually
+go mod tidy
+go build -o pastebin.exe main.go
+
+# Run the application
+.\pastebin.exe
+```
+
+#### Linux/macOS
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd Local-CoPasta
 
-# Build the application
+# Run the build script
+chmod +x build.sh
+./build.sh
+
+# Or build manually
+go mod tidy
 go build -o pastebin main.go
 
 # Run the application
@@ -57,6 +81,13 @@ go build -o pastebin main.go
 ```
 
 The application will start on `http://localhost:8080`
+
+### 💡 Why CGO-Free?
+This application uses `modernc.org/sqlite` instead of `mattn/go-sqlite3` because:
+- **No C compiler needed** - Works on Windows without MinGW/GCC
+- **Easier cross-compilation** - Build for any platform from any platform
+- **Smaller toolchain** - Just Go, no external dependencies
+- **Same SQLite** - Full SQLite 3 compatibility
 
 ### Pre-built Binaries
 
@@ -376,19 +407,19 @@ listen tcp :8080: bind: address already in use
 
 **Solution**: Change the port in `main.go` or kill the process using port 8080
 
-### CGO Build Errors
+### Go Module Download Errors
 
-SQLite requires CGO. Ensure you have GCC installed:
+If `go mod tidy` fails to download dependencies:
 
 ```bash
-# Ubuntu/Debian
-sudo apt-get install build-essential
+# Set proxy explicitly
+go env -w GOPROXY=https://proxy.golang.org,direct
 
-# macOS
-xcode-select --install
+# Retry
+go mod tidy
 
-# Windows
-# Install MinGW or use WSL
+# If behind a corporate proxy, set:
+go env -w GOPROXY=https://goproxy.io,direct
 ```
 
 ### Database Locked
