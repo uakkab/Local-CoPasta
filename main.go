@@ -302,25 +302,28 @@ func createSnippetHandler(w http.ResponseWriter, r *http.Request) {
 	session := getSessionUser(r)
 
 	var userID *int
-	var editPassword string
-	var uniqueLink string
+	var editPassword *string
+	var uniqueLink *string
+	var viewPasswordHash *string
 
 	if session != nil {
 		userID = &session.UserID
 	} else {
 		// Anonymous post - generate edit password
-		editPassword = generateRandomString(16)
+		pwd := generateRandomString(16)
+		editPassword = &pwd
 	}
 
 	// Generate unique link for link-sharing
 	if req.VisibilityType == "link" {
-		uniqueLink = generateRandomString(12)
+		link := generateRandomString(12)
+		uniqueLink = &link
 	}
 
 	// Hash view password if provided
-	var viewPasswordHash string
 	if req.VisibilityType == "password" && req.ViewPassword != "" {
-		viewPasswordHash = hashPassword(req.ViewPassword)
+		hash := hashPassword(req.ViewPassword)
+		viewPasswordHash = &hash
 	}
 
 	result, err := db.Exec(`
@@ -341,13 +344,13 @@ func createSnippetHandler(w http.ResponseWriter, r *http.Request) {
 		"message": "Snippet created successfully",
 	}
 
-	if editPassword != "" {
-		response["edit_password"] = editPassword
+	if editPassword != nil {
+		response["edit_password"] = *editPassword
 		response["warning"] = "Save this password! You'll need it to edit this snippet later."
 	}
 
-	if uniqueLink != "" {
-		response["unique_link"] = uniqueLink
+	if uniqueLink != nil {
+		response["unique_link"] = *uniqueLink
 	}
 
 	w.Header().Set("Content-Type", "application/json")
