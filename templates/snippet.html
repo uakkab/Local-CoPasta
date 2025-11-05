@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Snippet.Title}} - Local Pastebin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .snippet-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .snippet-header {
+            margin-bottom: 20px;
+        }
+
+        .snippet-title {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .snippet-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .snippet-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-public { background: #28a745; color: white; }
+        .badge-private { background: #6c757d; color: white; }
+        .badge-password { background: #ffc107; color: #333; }
+        .badge-link { background: #17a2b8; color: white; }
+
+        .snippet-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 14px;
+            margin-bottom: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .snippet-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .comments-section {
+            margin-top: 30px;
+        }
+
+        .comments-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .comment {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .comment-username {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .comment-date {
+            color: #999;
+        }
+
+        .comment-content {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .edit-form {
+            display: none;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .edit-form.active {
+            display: block;
+        }
+
+        .no-comments {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 onclick="window.location.href='/'">📋 Local Pastebin</h1>
+            <a href="/" class="back-link">← Back to Home</a>
+        </div>
+
+        <div class="snippet-container">
+            <div id="alertContainer"></div>
+
+            <div class="snippet-header">
+                <h1 class="snippet-title" id="snippetTitle">{{.Snippet.Title}}</h1>
+                <div class="snippet-meta">
+                    <span class="snippet-badge badge-{{.Snippet.VisibilityType}}">{{.Snippet.VisibilityType}}</span>
+                    <span>By: <strong>{{.Snippet.Username}}</strong></span>
+                    <span>Created: <strong id="createdDate">{{.Snippet.CreatedAt}}</strong></span>
+                    {{if .CanEdit}}
+                    <span>Updated: <strong id="updatedDate">{{.Snippet.UpdatedAt}}</strong></span>
+                    {{end}}
+                </div>
+            </div>
+
+            {{if .CanEdit}}
+            <div class="snippet-actions">
+                <button class="btn" onclick="toggleEditForm()">✏️ Edit Snippet</button>
+                {{if .CanDelete}}
+                <button class="btn btn-danger" onclick="deleteSnippet()">🗑️ Delete</button>
+                {{end}}
+                <button class="btn btn-secondary" onclick="copyToClipboard()">📋 Copy Content</button>
+            </div>
+
+            <div class="edit-form" id="editForm">
+                <h3>Edit Snippet</h3>
+                {{if not .IsOwner}}
+                <div class="form-group">
+                    <label>Edit Password</label>
+                    <input type="password" id="editPassword" placeholder="Enter your edit password" required>
+                </div>
+                {{end}}
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="editTitle" value="{{.Snippet.Title}}">
+                </div>
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="editContent">{{.Snippet.Content}}</textarea>
+                </div>
+                <button class="btn" onclick="saveEdit()">💾 Save Changes</button>
+                <button class="btn btn-secondary" onclick="toggleEditForm()">Cancel</button>
+            </div>
+            {{else}}
+            <div class="snippet-actions">
+                <button class="btn btn-secondary" onclick="copyToClipboard()">📋 Copy Content</button>
+            </div>
+            {{end}}
+
+            <div class="snippet-content" id="snippetContent">{{.Snippet.Content}}</div>
+
+            {{if .Snippet.CommentsEnabled}}
+            <div class="comments-section">
+                <h3>Comments ({{len .Comments}})</h3>
+
+                <div id="commentsList">
+                    {{if .Comments}}
+                        {{range .Comments}}
+                        <div class="comment">
+                            <div class="comment-header">
+                                <span class="comment-username">{{.Username}}</span>
+                                <span class="comment-date">{{.CreatedAt}}</span>
+                            </div>
+                            <div class="comment-content">{{.Content}}</div>
+                        </div>
+                        {{end}}
+                    {{else}}
+                    <div class="no-comments">No comments yet. Be the first to comment!</div>
+                    {{end}}
+                </div>
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                    <h4 style="margin-bottom: 15px;">Add a Comment</h4>
+                    <form onsubmit="addComment(event)">
+                        <div class="form-group">
+                            <label>Name (optional)</label>
+                            <input type="text" id="commentUsername" placeholder="Anonymous">
+                        </div>
+                        <div class="form-group">
+                            <label>Comment</label>
+                            <textarea id="commentContent" required></textarea>
+                        </div>
+                        <button type="submit" class="btn">💬 Post Comment</button>
+                    </form>
+                </div>
+            </div>
+            {{else}}
+            <div class="comments-section">
+                <p style="text-align: center; color: #999; padding: 20px;">Comments are disabled for this snippet.</p>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <script>
+        const snippetID = {{.Snippet.ID}};
+        const isOwner = {{.IsOwner}};
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertContainer');
+            alert.innerHTML = `<div class="alert alert-${type}">${escapeHtml(message)}</div>`;
+            setTimeout(() => alert.innerHTML = '', 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleEditForm() {
+            const form = document.getElementById('editForm');
+            form.classList.toggle('active');
+        }
+
+        async function saveEdit() {
+            const title = document.getElementById('editTitle').value;
+            const content = document.getElementById('editContent').value;
+            const editPassword = document.getElementById('editPassword')?.value || '';
+
+            if (!title || !content) {
+                showAlert('Title and content are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/snippet/update/${snippetID}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, edit_password: editPassword })
+                });
+
+                if (response.ok) {
+                    showAlert('Snippet updated successfully!', 'success');
+                    document.getElementById('snippetTitle').textContent = title;
+                    document.getElementById('snippetContent').textContent = content;
+                    toggleEditForm();
+
+                    // Update the date
+                    const now = new Date().toISOString();
+                    document.getElementById('updatedDate').textContent = now;
+                } else {
+                    const data = await response.json();
+                    showAlert(data.error || 'Failed to update snippet', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error', 'error');
+            }
+        }
+
+        async function deleteSnippet() {
+            if (!confirm('Are you sure you want to delete this snippet? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/snippet/delete/${snippetID}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Snippet deleted successfully!');
+                    window.location.href = '/';
+                } else {
+                    showAlert('Failed to delete snippet', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error', 'error');
+            }
+        }
+
+        async function addComment(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('commentUsername').value || 'Anonymous';
+            const content = document.getElementById('commentContent').value;
+
+            if (!content) {
+                showAlert('Comment content is required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/comments/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ snippet_id: snippetID, username, content })
+                });
+
+                if (response.ok) {
+                    showAlert('Comment added successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showAlert('Failed to add comment', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error', 'error');
+            }
+        }
+
+        function copyToClipboard() {
+            const content = document.getElementById('snippetContent').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                showAlert('Content copied to clipboard!', 'success');
+            }).catch(() => {
+                showAlert('Failed to copy to clipboard', 'error');
+            });
+        }
+
+        // Format dates
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        // Format the dates on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const createdDate = document.getElementById('createdDate');
+            if (createdDate) {
+                createdDate.textContent = formatDate(createdDate.textContent);
+            }
+            const updatedDate = document.getElementById('updatedDate');
+            if (updatedDate) {
+                updatedDate.textContent = formatDate(updatedDate.textContent);
+            }
+        });
+    </script>
+</body>
+</html>

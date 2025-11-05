@@ -766,6 +766,164 @@ func getUserSnippetsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(snippets)
 }
 
+func viewSnippetPageHandler(w http.ResponseWriter, r *http.Request) {
+	// Get snippet ID from URL
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	identifier := parts[2] // Could be ID or unique link
+
+	var snippet Snippet
+	var username sql.NullString
+	var editPassword sql.NullString
+	var viewPassword sql.NullString
+	var uniqueLink sql.NullString
+	var userID sql.NullInt64
+	var query string
+	var args []interface{}
+
+	// Try to parse as ID first
+	if id, err := strconv.Atoi(identifier); err == nil {
+		query = `
+			SELECT s.id, s.title, s.content, s.user_id, s.edit_password, s.visibility_type,
+			       s.view_password, s.unique_link, s.comments_enabled, s.created_at, s.updated_at, u.username
+			FROM snippets s
+			LEFT JOIN users u ON s.user_id = u.id
+			WHERE s.id = ?
+		`
+		args = []interface{}{id}
+	} else {
+		// Try as unique link
+		query = `
+			SELECT s.id, s.title, s.content, s.user_id, s.edit_password, s.visibility_type,
+			       s.view_password, s.unique_link, s.comments_enabled, s.created_at, s.updated_at, u.username
+			FROM snippets s
+			LEFT JOIN users u ON s.user_id = u.id
+			WHERE s.unique_link = ?
+		`
+		args = []interface{}{identifier}
+	}
+
+	err := db.QueryRow(query, args...).Scan(
+		&snippet.ID, &snippet.Title, &snippet.Content, &userID, &editPassword,
+		&snippet.VisibilityType, &viewPassword, &uniqueLink, &snippet.CommentsEnabled,
+		&snippet.CreatedAt, &snippet.UpdatedAt, &username,
+	)
+
+	if err != nil {
+		log.Println("Error fetching snippet:", err)
+		http.Error(w, "Snippet not found", http.StatusNotFound)
+		return
+	}
+
+	// Convert nullable fields
+	if username.Valid {
+		snippet.Username = username.String
+	} else {
+		snippet.Username = "Anonymous"
+	}
+
+	if userID.Valid {
+		uid := int(userID.Int64)
+		snippet.UserID = &uid
+	}
+
+	if editPassword.Valid {
+		snippet.EditPassword = editPassword.String
+	}
+
+	if viewPassword.Valid {
+		snippet.ViewPassword = viewPassword.String
+	}
+
+	if uniqueLink.Valid {
+		snippet.UniqueLink = uniqueLink.String
+	}
+
+	session := getSessionUser(r)
+
+	// Check access permissions
+	canAccess := false
+
+	switch snippet.VisibilityType {
+	case "public":
+		canAccess = true
+	case "private":
+		// Only owner can access
+		if session != nil && snippet.UserID != nil && *snippet.UserID == session.UserID {
+			canAccess = true
+		}
+	case "password":
+		// Check if password provided
+		password := r.URL.Query().Get("password")
+		if password != "" && hashPassword(password) == snippet.ViewPassword {
+			canAccess = true
+		} else if session != nil && snippet.UserID != nil && *snippet.UserID == session.UserID {
+			canAccess = true
+		}
+	case "link":
+		// Already accessed via link or owner
+		canAccess = true
+		if session != nil && snippet.UserID != nil && *snippet.UserID == session.UserID {
+			canAccess = true
+		}
+	}
+
+	if !canAccess {
+		if snippet.VisibilityType == "password" {
+			http.Error(w, "Password required", http.StatusUnauthorized)
+		} else {
+			http.Error(w, "Access denied", http.StatusForbidden)
+		}
+		return
+	}
+
+	// Get comments
+	comments := []Comment{}
+	rows, err := db.Query(`
+		SELECT id, snippet_id, username, content, created_at
+		FROM comments
+		WHERE snippet_id = ?
+		ORDER BY created_at ASC
+	`, snippet.ID)
+
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var c Comment
+			if err := rows.Scan(&c.ID, &c.SnippetID, &c.Username, &c.Content, &c.CreatedAt); err == nil {
+				comments = append(comments, c)
+			}
+		}
+	}
+
+	// Check if user can edit
+	canEdit := false
+	isOwner := false
+	canDelete := false
+
+	if session != nil && snippet.UserID != nil && *snippet.UserID == session.UserID {
+		canEdit = true
+		isOwner = true
+		canDelete = true
+	} else if snippet.EditPassword != "" {
+		canEdit = true // Can edit with password
+	}
+
+	data := map[string]interface{}{
+		"Snippet":   snippet,
+		"Comments":  comments,
+		"CanEdit":   canEdit,
+		"IsOwner":   isOwner,
+		"CanDelete": canDelete,
+	}
+
+	templates.ExecuteTemplate(w, "snippet.html", data)
+}
+
 func main() {
 	// Initialize database
 	if err := initDB(); err != nil {
@@ -782,13 +940,14 @@ func main() {
 
 	// Routes
 	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/snippet/", viewSnippetPageHandler)       // View snippet page
 	http.HandleFunc("/api/register", registerHandler)
 	http.HandleFunc("/api/login", loginHandler)
 	http.HandleFunc("/api/logout", logoutHandler)
 	http.HandleFunc("/api/snippets/create", createSnippetHandler)
 	http.HandleFunc("/api/snippets/public", getPublicSnippetsHandler)
 	http.HandleFunc("/api/snippets/my", getUserSnippetsHandler)
-	http.HandleFunc("/api/snippets/", getSnippetHandler)       // GET single snippet
+	http.HandleFunc("/api/snippets/", getSnippetHandler)       // GET single snippet (API)
 	http.HandleFunc("/api/snippet/update/", updateSnippetHandler) // PUT update
 	http.HandleFunc("/api/snippet/delete/", deleteSnippetHandler) // DELETE
 	http.HandleFunc("/api/comments/create", createCommentHandler)

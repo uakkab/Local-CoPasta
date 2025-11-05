@@ -505,19 +505,7 @@
         </div>
     </div>
 
-    <!-- Snippet View Modal -->
-    <div id="snippetModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Snippet Details</h2>
-                <span class="modal-close" onclick="closeModal('snippetModal')">&times;</span>
-            </div>
-            <div id="snippetContent"></div>
-        </div>
-    </div>
-
     <script>
-        let currentSnippet = null;
         let loggedIn = {{.LoggedIn}};
 
         function switchTab(tab) {
@@ -536,8 +524,12 @@
 
         function showAlert(elementId, message, type) {
             const alert = document.getElementById(elementId);
-            alert.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-            setTimeout(() => alert.innerHTML = '', 5000);
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message; // message already contains safe HTML from createSnippet
+            alert.innerHTML = '';
+            alert.appendChild(alertDiv);
+            setTimeout(() => alert.innerHTML = '', 10000);
         }
 
         function handleVisibilityChange() {
@@ -658,173 +650,9 @@
             }
         }
 
-        async function viewSnippet(id) {
-            try {
-                const response = await fetch(`/api/snippets/${id}`);
-                const data = await response.json();
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        const password = prompt('This snippet is password protected. Enter password:');
-                        if (password) {
-                            viewSnippet(id + '?password=' + encodeURIComponent(password));
-                        }
-                        return;
-                    }
-                    alert('Failed to load snippet');
-                    return;
-                }
-
-                currentSnippet = data.snippet;
-                const snippet = data.snippet;
-                const comments = data.comments || [];
-
-                let actionsHtml = '';
-                if (loggedIn || snippet.edit_password) {
-                    actionsHtml = `
-                        <div class="snippet-actions">
-                            <button class="btn" onclick="editSnippet()">Edit</button>
-                            ${loggedIn ? '<button class="btn btn-danger" onclick="deleteSnippet()">Delete</button>' : ''}
-                        </div>
-                    `;
-                }
-
-                let commentsHtml = '';
-                if (snippet.comments_enabled) {
-                    commentsHtml = `
-                        <div class="comments-section">
-                            <h3>Comments (${comments.length})</h3>
-                            <div id="commentsList">
-                                ${comments.map(c => `
-                                    <div class="comment">
-                                        <div class="comment-header">
-                                            <span class="comment-username">${escapeHtml(c.username)}</span>
-                                            <span>${formatDate(c.created_at)}</span>
-                                        </div>
-                                        <div class="comment-content">${escapeHtml(c.content)}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <div style="margin-top: 20px;">
-                                <h4>Add Comment</h4>
-                                <form onsubmit="addComment(event)">
-                                    <div class="form-group">
-                                        <label>Name (optional)</label>
-                                        <input type="text" id="commentUsername" placeholder="Anonymous">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Comment</label>
-                                        <textarea id="commentContent" required></textarea>
-                                    </div>
-                                    <button type="submit" class="btn">Add Comment</button>
-                                </form>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                document.getElementById('snippetContent').innerHTML = `
-                    <div class="snippet-view">
-                        <h2>${escapeHtml(snippet.title)}</h2>
-                        <div class="snippet-meta" style="margin-bottom: 15px;">
-                            <span class="snippet-badge badge-${snippet.visibility_type}">${snippet.visibility_type}</span>
-                            <span>By: ${escapeHtml(snippet.username)}</span>
-                            <span>${formatDate(snippet.created_at)}</span>
-                        </div>
-                        <div class="content">${escapeHtml(snippet.content)}</div>
-                        ${actionsHtml}
-                    </div>
-                    ${commentsHtml}
-                `;
-
-                document.getElementById('snippetModal').classList.add('active');
-            } catch (error) {
-                alert('Network error');
-            }
-        }
-
-        async function editSnippet() {
-            if (!currentSnippet) return;
-
-            const newTitle = prompt('Enter new title:', currentSnippet.title);
-            if (!newTitle) return;
-
-            const newContent = prompt('Enter new content:', currentSnippet.content);
-            if (!newContent) return;
-
-            let editPassword = '';
-            if (!loggedIn) {
-                editPassword = prompt('Enter your edit password:');
-                if (!editPassword) return;
-            }
-
-            try {
-                const response = await fetch(`/api/snippet/update/${currentSnippet.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: newTitle, content: newContent, edit_password: editPassword })
-                });
-
-                if (response.ok) {
-                    alert('✅ Snippet updated successfully!');
-                    closeModal('snippetModal');
-                    loadPublicSnippets();
-                    if (loggedIn) loadMySnippets();
-                } else {
-                    const data = await response.json();
-                    alert('❌ ' + (data.error || 'Failed to update snippet'));
-                }
-            } catch (error) {
-                alert('Network error');
-            }
-        }
-
-        async function deleteSnippet() {
-            if (!currentSnippet) return;
-            if (!confirm('Are you sure you want to delete this snippet?')) return;
-
-            try {
-                const response = await fetch(`/api/snippet/delete/${currentSnippet.id}`, {
-                    method: 'DELETE'
-                });
-
-                if (response.ok) {
-                    alert('✅ Snippet deleted successfully!');
-                    closeModal('snippetModal');
-                    loadPublicSnippets();
-                    if (loggedIn) loadMySnippets();
-                } else {
-                    alert('❌ Failed to delete snippet');
-                }
-            } catch (error) {
-                alert('Network error');
-            }
-        }
-
-        async function addComment(event) {
-            event.preventDefault();
-
-            if (!currentSnippet) return;
-
-            const username = document.getElementById('commentUsername').value || 'Anonymous';
-            const content = document.getElementById('commentContent').value;
-
-            try {
-                const response = await fetch('/api/comments/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ snippet_id: currentSnippet.id, username, content })
-                });
-
-                if (response.ok) {
-                    alert('✅ Comment added!');
-                    viewSnippet(currentSnippet.id);
-                } else {
-                    alert('❌ Failed to add comment');
-                }
-            } catch (error) {
-                alert('Network error');
-            }
+        function viewSnippet(id) {
+            // Navigate to snippet page
+            window.location.href = `/snippet/${id}`;
         }
 
         async function login(event) {
